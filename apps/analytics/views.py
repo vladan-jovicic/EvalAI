@@ -27,7 +27,11 @@ from participants.serializers import (ParticipantCount,
                                       ParticipantTeamCount,
                                       ParticipantTeamCountSerializer,
                                       )
-from .serializers import ChallengePhaseSubmissionAnalysisSerializer, LastSubmissionDateTimeAnalysisSerializer
+from .serializers import (ChallengePhaseSubmissionCount,
+                          ChallengePhaseSubmissionCountSerializer,
+                          LastSubmissionTimestamp,
+                          LastSubmissionTimestampSerializer,
+                          )
 
 
 @throttle_classes([UserRateThrottle])
@@ -35,6 +39,9 @@ from .serializers import ChallengePhaseSubmissionAnalysisSerializer, LastSubmiss
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail, IsChallengeCreator))
 @authentication_classes((ExpiringTokenAuthentication,))
 def get_participant_team_count(request, challenge_pk):
+    """
+        Returns the number of participant teams in a challenge
+    """
     challenge = get_challenge_model(challenge_pk)
     participant_team_count = challenge.participant_teams.count()
     participant_team_count = ParticipantTeamCount(participant_team_count)
@@ -47,6 +54,9 @@ def get_participant_team_count(request, challenge_pk):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail, IsChallengeCreator))
 @authentication_classes((ExpiringTokenAuthentication,))
 def get_participant_count(request, challenge_pk):
+    """
+        Returns the number of participants in a challenge
+    """
     challenge = get_challenge_model(challenge_pk)
     participant_teams = challenge.participant_teams.all()
     participant_count = Participant.objects.filter(team__in=participant_teams).count()
@@ -60,10 +70,10 @@ def get_participant_count(request, challenge_pk):
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail, IsChallengeCreator))
 @authentication_classes((ExpiringTokenAuthentication,))
 def get_submission_count(request, challenge_pk, duration):
-    '''
+    """
         Returns submission count for a challenge according to the duration
         Valid values for duration are all, daily, weekly and monthly.
-    '''
+    """
     # make sure that a valid url is requested.
     if duration.lower() not in ('all', 'daily', 'weekly', 'monthly'):
         response_data = {'error': 'Wrong URL pattern!'}
@@ -103,21 +113,25 @@ def get_challenge_phase_submission_analysis(request, challenge_pk, challenge_pha
     1. The submissions count for challenge phase.
     2. The participated team count for challenge phase.
     """
-
     challenge = get_challenge_model(challenge_pk)
 
     challenge_phase = get_challenge_phase_model(challenge_phase_pk)
 
-    submissions = Submission.objects.filter(challenge_phase__challenge=challenge,
-                                            challenge_phase=challenge_phase)
+    submissions = Submission.objects.filter(
+        challenge_phase=challenge_phase, challenge_phase__challenge=challenge)
+    submission_count = submissions.count()
+    participant_team_count = submissions.values_list(
+        'participant_team', flat=True).distinct().count()
+
+    challenge_phase_submission_count = ChallengePhaseSubmissionCount(
+        submission_count, participant_team_count, challenge_phase.pk)
     try:
-        serializer = ChallengePhaseSubmissionAnalysisSerializer(submissions, many=True)
-        if serializer.data:
-            response_data = serializer.data[0]
-            return Response(response_data, status=status.HTTP_200_OK)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = ChallengePhaseSubmissionCountSerializer(challenge_phase_submission_count)
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_200_OK)
     except:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        response_data = {'error': "Bad request. Please try again later!"}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
 
 @throttle_classes([UserRateThrottle])
@@ -125,6 +139,9 @@ def get_challenge_phase_submission_analysis(request, challenge_pk, challenge_pha
 @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail, IsChallengeCreator))
 @authentication_classes((ExpiringTokenAuthentication,))
 def get_last_submission_time(request, challenge_pk, challenge_phase_pk, submission_by):
+    """
+        Returns the last submission time for a particular challenge phase
+    """
     challenge = get_challenge_model(challenge_pk)
 
     challenge_phase = get_challenge_phase_model(challenge_phase_pk)
@@ -159,13 +176,22 @@ def get_last_submission_datetime_analysis(request, challenge_pk, challenge_phase
 
     challenge_phase = get_challenge_phase_model(challenge_phase_pk)
 
-    submissions = Submission.objects.filter(challenge_phase__challenge=challenge,
-                                            challenge_phase=challenge_phase)
+    submissions = Submission.objects.filter(
+        challenge_phase__challenge=challenge)
+
+    last_submission_timestamp_in_challenge = submissions.order_by(
+        '-submitted_at')[0].created_at
+
+    last_submission_timestamp_in_challenge_phase = submissions.filter(
+        challenge_phase=challenge_phase).order_by('-submitted_at')[0].created_at
+
+    last_submission_timestamp = LastSubmissionTimestamp(
+        last_submission_timestamp_in_challenge, last_submission_timestamp_in_challenge_phase, challenge_phase.pk)
+
     try:
-        serializer = LastSubmissionDateTimeAnalysisSerializer(submissions, many=True)
-        if serializer.data:
-            response_data = serializer.data[0]
-            return Response(response_data, status=status.HTTP_200_OK)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = LastSubmissionTimestampSerializer(last_submission_timestamp)
+        response_data = serializer.data
+        return Response(response_data, status=status.HTTP_200_OK)
     except:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        response_data = {'error': 'Bad request. Please try again later!'}
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
