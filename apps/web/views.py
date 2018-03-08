@@ -1,7 +1,6 @@
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.template.loader import get_template
 from django.template import Context
@@ -51,7 +50,8 @@ def send_challenge_details(request):
 
         elif request.method == 'POST':
             template_name = 'send_challenge_email.html'
-            emails = User.objects.all().exclude(email__isnull=True).exclude(email__exact='').values_list('email', flat=True)
+            emails = User.objects.all().exclude(email__isnull=True)
+            emails = emails.exclude(email__exact='').values_list('email', flat=True)
             plaintext = get_template('send_challenge_email.txt')
             htmly = get_template('send_challenge_email.html')
 
@@ -64,11 +64,11 @@ def send_challenge_details(request):
                 challenge_image = request.FILES['challenge_image']
             except:
                 challenge_image = None
-                
+
             if challenge_image:
                 image = MIMEImage(challenge_image.read())
                 image.add_header('Content-ID', '<{}>'.format(challenge_image))
-            
+
             context = Context({'challenge_name': challenge_name,
                                'challenge_host': challenge_host,
                                'challenge_body': challenge_body,
