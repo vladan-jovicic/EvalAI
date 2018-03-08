@@ -18,6 +18,7 @@ class ChallengeAdmin(ImportExportTimeStampedAdmin):
                     "featured")
     list_filter = ("creator", "published", "enable_forum", "anonymous_leaderboard", "featured")
     search_fields = ("title", "creator__team_name")
+    change_list_template = 'admin/challenges/change_list.html'
 
 
 @admin.register(DatasetSplit)

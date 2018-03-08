@@ -1,0 +1,16 @@
+    Hi,
+
+
+    We have just launched {{competition_name}}! Here are the competition details.
+
+    Host:
+    {{challenge_host}}
+
+
+    Competition Description:
+    {{challenge_body}}
+
+
+    Good Luck,
+    The EvalAI Team
+
