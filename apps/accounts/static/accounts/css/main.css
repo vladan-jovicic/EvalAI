@@ -403,6 +403,7 @@ nav ul li a:hover {
 .btn {
   text-transform: none;
   font-family: 'Roboto';
+  background-color: #3c3e49;
 }
 .btn i {
   font-size: 14px;
@@ -2393,4 +2394,9 @@ trix-toolbar .trix-button-row {
   .main-header nav {
     padding: 0px 30px;
   }
+}
+
+.file-field .file-path-wrapper {
+  overflow: hidden;
+  padding-left: 10px;
 }

@@ -39,26 +39,22 @@ def internal_server_error(request):
     return response
 
 
-def send_challenge_details(request):
+def notify_users_about_challenge(request):
     """
     Email New Challenge Details to EvalAI Users
     """
     if request.user.is_authenticated() and request.user.is_superuser:
         if request.method == 'GET':
-            template_name = 'send_challenge_details.html'
+            template_name = 'notification_email_data.html'
             return render(request, template_name)
 
         elif request.method == 'POST':
-            template_name = 'send_challenge_email.html'
-            emails = User.objects.all().exclude(email__isnull=True)
-            emails = emails.exclude(email__exact='').values_list('email', flat=True)
-            plaintext = get_template('send_challenge_email.txt')
-            htmly = get_template('send_challenge_email.html')
+            template_name = 'notification_email.html'
+            emails = User.objects.all().exclude(email__isnull=True, email__exact='').values_list('email', flat=True)
+            htmly = get_template('notification_email.html')
 
-            subject = request.POST.get('challenge_subject')
-            challenge_host = request.POST.get('challenge_host')
-            challenge_name = request.POST.get('challenge_name')
-            challenge_body = request.POST.get('challenge_body')
+            subject = request.POST.get('subject')
+            body = request.POST.get('body')
 
             try:
                 challenge_image = request.FILES['challenge_image']
@@ -69,18 +65,15 @@ def send_challenge_details(request):
                 image = MIMEImage(challenge_image.read())
                 image.add_header('Content-ID', '<{}>'.format(challenge_image))
 
-            context = Context({'challenge_name': challenge_name,
-                               'challenge_host': challenge_host,
-                               'challenge_body': challenge_body,
+            context = Context({'body': body,
                                'image': challenge_image})
 
             for email in emails:
                 from_email = settings.EMAIL_HOST_USER
-                to = [email]
-                text_content = plaintext.render(context)
+                to = ['rishabhjain2018@gmail.com']
                 html_content = htmly.render(context)
 
-                msg = EmailMultiAlternatives(subject, text_content, from_email, to)
+                msg = EmailMultiAlternatives(subject, html_content, from_email, to)
                 msg.attach_alternative(html_content, "text/html")
                 msg.mixed_subtype = 'related'
 
@@ -88,7 +81,7 @@ def send_challenge_details(request):
                     msg.attach(image)
 
                 msg.send()
-            return render(request, 'send_email_conformation.html', {'message': 'All the emails are sent successfully!'})
+            return render(request, 'notification_email_conformation.html', {'message': 'All the emails are sent successfully!'})
         else:
             return render(request, 'error404.html')
     else:
